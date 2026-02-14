@@ -127,7 +127,7 @@ module.exports = {
 We have a way to communicate with the database. The next step is installing the packages to build our security agent:
 
 ```bash
-npm install langchain @langchain/core @langchain/tavily dotenv
+npm install @langchain/core @langchain/deepseek dotenv zod
 ```
 
 The software company's LLM provider is DeepSeek, and they have given us an API key to use. We create an `.env` file and save the environment variable:
@@ -143,7 +143,6 @@ require("dotenv").config();
 
 const { ChatDeepSeek } = require("@langchain/deepseek");
 const { tool } = require("@langchain/core/tools");
-const { createToolCallingAgent, AgentExecutor } = require("langchain/agents");
 const { z } = require("zod");
 
 const { verifyIfKeyExists, setKeyValue } = require("./redis");
@@ -174,8 +173,7 @@ const checkIpTool = tool(
   },
   {
     name: "check_ip",
-    description:
-      "Checks if the given IP address exists in the blocklist. Returns true if already blocked, false otherwise.",
+    description: "Checks if the given IP address exists in the blocklist.",
     schema: z.object({
       ip: z.string().describe("The IP address to check."),
     }),
@@ -190,8 +188,7 @@ const blockIpTool = tool(
   },
   {
     name: "block_ip",
-    description:
-      "Blocks the given IP address by adding it to the blocklist. Returns true if successfully blocked, false otherwise.",
+    description: "Blocks the given IP address by adding it to the blocklist.",
     schema: z.object({
       ip: z.string().describe("The IP address to block."),
     }),
@@ -204,16 +201,29 @@ const llm = new ChatDeepSeek({
   apiKey: process.env.DEEPSEEK_API_KEY,
 });
 
-const agent = await createToolCallingAgent({
-  llm,
-  tools,
-  prompt:
-    "You are a security agent designed to monitor and protect an API from brute-force attacks. Read log files first, analyze potential threats, check if an IP address has exceeded the request threshold and block it if necessary.",
-});
+const llmWithTools = llm.bindTools(tools);
 
-const agentExecutor = new AgentExecutor({ agent, tools });
+const SYSTEM_PROMPT = `You are a security agent designed to monitor and protect an API from brute-force attacks.
+Your responsibilities are:
+1. Read the log file to analyze potential threats
+2. Identify IP addresses that have exceeded the request threshold
+3. Check if an IP address is already blocked
+4. Block malicious IP addresses
 
-module.exports = agentExecutor;
+Always start by reading the log file, then analyze it for suspicious activity, and block any threatening IPs.`;
+
+async function runAgent(input) {
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: input },
+  ];
+
+  const response = await llmWithTools.invoke(messages);
+  return response;
+}
+
+module.exports = runAgent;
+
 ```
 
-First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we define our agent by giving it a concise and straightforward prompt, and create the agent executor.
+First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, add a concise and straightforward prompt, and create the agent executor.
