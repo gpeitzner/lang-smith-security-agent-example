@@ -12,7 +12,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@langchain/core": "^1.1.24",
+    "@langchain/tavily": "^1.2.0",
+    "deepagents": "^1.7.6",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "langchain": "^1.2.24",
     "redis": "^5.10.0"
   }
 }
