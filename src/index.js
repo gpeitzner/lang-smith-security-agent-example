@@ -10,7 +10,7 @@ const log = (message, type) => {
   } else {
     console.log(message);
   }
-  fs.appendFileSync("log.txt", `${new Date().toISOString()} - ${message}\n`);
+  fs.appendFileSync("login.log", `${new Date().toISOString()} - ${message}\n`);
 };
 
 const login = (req, res, next) => {
