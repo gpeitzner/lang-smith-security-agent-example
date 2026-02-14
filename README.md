@@ -58,3 +58,22 @@ Now that we have a full understanding of the API, the software company has given
 ```bash
 docker run -d --name my-redis -p 6379:6379 redis:latest
 ```
+
+We verify that the Redis Docker container is running:
+
+```bash
+docker ps -a
+```
+
+The output looks like this::
+
+```txt
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS                                         NAMES
+16b1ed8ccd32   redis     "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   my-redis
+```
+
+Cool! The container is up and running. Let's install the `redis` npm package in the API:
+
+```bash
+npm i redis
+```
