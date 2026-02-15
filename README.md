@@ -199,6 +199,7 @@ const tools = [readLogFileTool, checkIpTool, blockIpTool];
 
 const llm = new ChatDeepSeek({
   apiKey: process.env.DEEPSEEK_API_KEY,
+  model: "deepseek-chat",
 });
 
 const llmWithTools = llm.bindTools(tools);
@@ -223,7 +224,191 @@ async function runAgent(input) {
 }
 
 module.exports = runAgent;
-
 ```
 
-First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, add a concise and straightforward prompt, and create the agent executor.
+First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, add a concise and straightforward prompt, and create the agent executor. We are close to the final implementation. Take a look at the current state of the entry point of the API (`index.js` file):
+
+```JavaScript
+const express = require("express");
+const fs = require("fs");
+
+const app = express();
+const port = 3000;
+
+const log = (message, type) => {
+  if (type === "error") {
+    console.error(message);
+  } else {
+    console.log(message);
+  }
+  fs.appendFileSync("login.log", `${new Date().toISOString()} - ${message}\n`);
+};
+
+const login = (req, res, next) => {
+  const whitelist = JSON.parse(fs.readFileSync("whitelist.json", "utf-8"));
+  const clientIp = req.headers["x-forwarded-for"];
+
+  if (whitelist.includes(clientIp)) {
+    log(`Login attempt from ${clientIp} - SUCCESS`, "info");
+    next();
+  } else {
+    log(`Login attempt from ${clientIp} - FAILED`, "error");
+    res.status(403).send("Forbidden");
+  }
+};
+
+app.use(express.json());
+
+app.post("/task", login, (req, res) => {
+  if (typeof req.body.task === "string") {
+    req.body.task = req.body.task.replace(/foo/g, "bar");
+  }
+
+  res.json({ task: req.body.task });
+});
+
+app.listen(port, () => {
+  console.log(`API listening at http://localhost:${port}`);
+});
+```
+
+There is an existing middleware that authenticates and authorizes the client. We need to add a second one, and it needs to be executed first. Add the following code:
+
+```JavaScript
+const express = require("express");
+const fs = require("fs");
+
+const { verifyIfKeyExists } = require("./redis");
+
+const app = express();
+const port = 3000;
+
+const log = (message, type) => {
+  if (type === "error") {
+    console.error(message);
+  } else {
+    console.log(message);
+  }
+  fs.appendFileSync("login.log", `${new Date().toISOString()} - ${message}\n`);
+};
+
+app.use(express.json());
+
+const guardian = async (req, res, next) => {
+  const clientIp = req.headers["x-forwarded-for"];
+  const key = `ip:${clientIp}`;
+  const isBlocked = await verifyIfKeyExists(key);
+  if (isBlocked) {
+    log(`Blocked login attempt from ${clientIp}`, "error");
+    return res.status(403).send("Forbidden");
+  }
+  next();
+};
+
+const login = (req, res, next) => {
+  const whitelist = JSON.parse(fs.readFileSync("whitelist.json", "utf-8"));
+  const clientIp = req.headers["x-forwarded-for"];
+
+  if (whitelist.includes(clientIp)) {
+    log(`Login attempt from ${clientIp} - SUCCESS`, "info");
+    next();
+  } else {
+    log(`Login attempt from ${clientIp} - FAILED`, "error");
+    res.status(403).send("Forbidden");
+  }
+};
+
+app.post("/task", guardian, login, (req, res) => {
+  if (typeof req.body.task === "string") {
+    req.body.task = req.body.task.replace(/foo/g, "bar");
+  }
+
+  res.json({ task: req.body.task });
+});
+
+app.listen(port, () => {
+  console.log(`API listening at http://localhost:${port}`);
+});
+```
+
+We added the `guardian` middleware. Since it checks the IP directly from the primary memory, it can handle the deny process faster. Now, we need to configure our security agent to be executed every minute. Let's add the following code:
+
+```JavaScript
+const express = require("express");
+const fs = require("fs");
+
+const { verifyIfKeyExists } = require("./redis");
+const runAgent = require("./agent");
+
+const app = express();
+const port = 3000;
+
+const log = (message, type) => {
+  if (type === "error") {
+    console.error(message);
+  } else {
+    console.log(message);
+  }
+  fs.appendFileSync("login.log", `${new Date().toISOString()} - ${message}\n`);
+};
+
+app.use(express.json());
+
+const guardian = async (req, res, next) => {
+  const clientIp = req.headers["x-forwarded-for"];
+  const key = `ip:${clientIp}`;
+  const isBlocked = await verifyIfKeyExists(key);
+  if (isBlocked) {
+    log(`Blocked login attempt from ${clientIp}`, "error");
+    return res.status(403).send("Forbidden");
+  }
+  next();
+};
+
+const login = (req, res, next) => {
+  const whitelist = JSON.parse(fs.readFileSync("whitelist.json", "utf-8"));
+  const clientIp = req.headers["x-forwarded-for"];
+
+  if (whitelist.includes(clientIp)) {
+    log(`Login attempt from ${clientIp} - SUCCESS`, "info");
+    next();
+  } else {
+    log(`Login attempt from ${clientIp} - FAILED`, "error");
+    res.status(403).send("Forbidden");
+  }
+};
+
+app.post("/task", guardian, login, (req, res) => {
+  if (typeof req.body.task === "string") {
+    req.body.task = req.body.task.replace(/foo/g, "bar");
+  }
+
+  res.json({ task: req.body.task });
+});
+
+setInterval(async () => {
+  try {
+    log("Running security agent...", "info");
+    const result = await runAgent();
+    log(`Security agent completed: ${JSON.stringify(result)}`, "info");
+  } catch (err) {
+    log(`Security agent error: ${err.message}`, "error");
+  }
+}, 60000);
+
+app.listen(port, () => {
+  console.log(`API listening at http://localhost:${port}`);
+});
+```
+
+Let's run the API again:
+
+```bash
+npm start
+```
+
+Then the `./evil.sh` script:
+
+```bash
+./evil.sh
+```

@@ -58,6 +58,7 @@ const tools = [readLogFileTool, checkIpTool, blockIpTool];
 
 const llm = new ChatDeepSeek({
   apiKey: process.env.DEEPSEEK_API_KEY,
+  model: "deepseek-chat",
 });
 
 const llmWithTools = llm.bindTools(tools);
