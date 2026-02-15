@@ -1,9 +1,5 @@
 # Building a Security Agent with LangSmith
 
-## Architecture
-
-![Architecture Diagram](./architecture.drawio.png)
-
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -277,7 +273,7 @@ First, we load our environment variables and import all the utility packages we 
 
 ![Agent Architecture Diagram](./agent.drawio.png)
 
-It is time to modify the entry point of the API (`./index.js` file):
+It is time to modify the entry point of the API. Take a look at the `./index.js` file:
 
 ```JavaScript
 const express = require("express");
