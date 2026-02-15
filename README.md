@@ -82,7 +82,7 @@ We verify that the Redis Docker container is running:
 docker ps -a
 ```
 
-The output looks like this::
+The output looks like this:
 
 ```txt
 CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS                                         NAMES
