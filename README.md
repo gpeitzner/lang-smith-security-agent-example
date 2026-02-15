@@ -273,7 +273,11 @@ async function runAgent(
 module.exports = runAgent;
 ```
 
-First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, and add a concise and straightforward prompt—letting the LLM iterate until there are no more tool calls—to create the agent executor. We are close to the final implementation. Take a look at the current state of the entry point of the API (`./index.js` file):
+First, we load our environment variables and import all the utility packages we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, and add a concise and straightforward prompt—letting the LLM iterate until there are no more tool calls—to create the agent executor. Our agent looks like this:
+
+![Agent Architecture Diagram](./agent.drawio.png)
+
+It is time to modify the entry point of the API (`./index.js` file):
 
 ```JavaScript
 const express = require("express");
@@ -425,9 +429,7 @@ Login attempt from 192.256.1.2 - SUCCESS
 Blocked login attempt from 192.256.1.9
 ```
 
-After the security agent finishes its first execution, it is able to identify the malicious IPs and block them; no more failed login attempts are visible in the logs. We deployed the new feature, and the software company is happy with us. The final API architecture looks like this:
-
-![Agent Architecture Diagram](./agent.drawio.png)
+After the security agent finishes its first execution, it is able to identify the malicious IPs and block them; no more failed login attempts are visible in the logs. We deployed the new feature, and the software company is happy with us.
 
 ## Final Thoughts
 
