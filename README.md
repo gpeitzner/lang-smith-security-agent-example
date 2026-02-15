@@ -17,7 +17,7 @@ Before you begin, ensure you have the following installed:
 
 ## Let's Start Our Journey
 
-An important software company has been dealing with some availability issues lately. They have an API that is widely used by external partners. The API has only one endpoint that processes important data and sends it back to the clients. The API has middleware that authenticates and authorizes the client; this process consumes a certain amount of compute cycles since the whitelist is stored using a plain-text file. So, every time a client wants to consume the API, the middleware needs to read the file and verify if the IP of the client is in the whitelist. The problem they are facing is that some malicious actors have been trying to breach this middleware, and to do this, they have been using brute-force attacks, downgrading the performance of the API. They provided us with a [link](https://github.com/gpeitzner/lang-smith-security-agent-example/tree/main/src/start) where we can find the code of the API to get familiar with the app, and the folder structure looks like this:
+An important software company has been dealing with availability issues lately. They have an API that is widely used by external partners. This API has only one endpoint that processes important data and sends it back to the clients. The API includes middleware that authenticates and authorizes the client; this process consumes a certain amount of compute cycles since the whitelist is stored in a plain-text file. Consequently, every time a client attempts to consume the API, the middleware must read the file and verify whether the client's IP is on the whitelist. The problem the company faces is that malicious actors have been trying to breach this middleware by using brute-force attacks, thereby degrading the performance of the API. The software company provided a [link](https://github.com/gpeitzner/lang-smith-security-agent-example/tree/main/src/start) where the API code can be found to help us become familiar with the application. The folder structure is as follows:
 
 ```bash
 /src
@@ -95,7 +95,7 @@ Cool! The container is up and running. Let's install the `redis` npm package in 
 npm install redis
 ```
 
-Now that we have the `redis` package, we create the `redis.js` file, which contains utility functions to read from and write to the database:
+Now that we have the `redis` package, we create the `./redis.js` file, which contains utility functions to read from and write to the database:
 
 ```JavaScript
 const { createClient } = require("redis");
@@ -147,7 +147,7 @@ We have a way to communicate with the database. The next step is installing the 
 npm install @langchain/core @langchain/deepseek dotenv zod
 ```
 
-The software company's LLM provider is DeepSeek, and they have given us an API key to use. We create an `.env` file and save the environment variable:
+The software company's LLM provider is DeepSeek, and they have given us an API key to use. We create an `./.env` file and save the environment variable:
 
 ```bash
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
@@ -273,7 +273,7 @@ async function runAgent(
 module.exports = runAgent;
 ```
 
-First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, and add a concise and straightforward prompt—letting the LLM iterate until there are no more tool calls—to create the agent executor. We are close to the final implementation. Take a look at the current state of the entry point of the API (`index.js` file):
+First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, and add a concise and straightforward prompt—letting the LLM iterate until there are no more tool calls—to create the agent executor. We are close to the final implementation. Take a look at the current state of the entry point of the API (`./index.js` file):
 
 ```JavaScript
 const express = require("express");
@@ -389,7 +389,7 @@ Then the `./evil.sh` script:
 ./evil.sh
 ```
 
-You will see the following outputs on the terminal or in the `login.log` file:
+You will see the following outputs on the terminal or in the `./login.log` file:
 
 ```txt
 Running security agent...
