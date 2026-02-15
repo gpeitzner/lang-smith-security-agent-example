@@ -343,6 +343,16 @@ const guardian = async (req, res, next) => {
 };
 
 ...
+
+app.post("/task", guardian, login, (req, res) => {
+  if (typeof req.body.task === "string") {
+    req.body.task = req.body.task.replace(/foo/g, "bar");
+  }
+
+  res.json({ task: req.body.task });
+});
+
+...
 ```
 
 We added the `guardian` middleware. Since it checks the IP directly from the primary memory, it can handle the denial process faster. Now, we need to configure our security agent to be executed every ten minutes. Let's add the following code:
@@ -415,7 +425,9 @@ Login attempt from 192.256.1.2 - SUCCESS
 Blocked login attempt from 192.256.1.9
 ```
 
-After the security agent finishes its first execution, it is able to identify the malicious IPs and block them; no more failed login attempts are visible in the logs. We deploy the new feature, and the software company is happy with us.
+After the security agent finishes its first execution, it is able to identify the malicious IPs and block them; no more failed login attempts are visible in the logs. We deployed the new feature, and the software company is happy with us. The final API architecture looks like this:
+
+![Agent Architecture Diagram](./agent.drawio.png)
 
 ## Final Thoughts
 
