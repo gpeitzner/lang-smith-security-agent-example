@@ -1,5 +1,9 @@
 # Building a Security Agent with LangSmith
 
+## Architecture
+
+![Architecture Diagram](./architecture.drawio.png)
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
