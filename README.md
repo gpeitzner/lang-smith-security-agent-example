@@ -1,5 +1,18 @@
 # Building a Security Agent with LangSmith
 
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (v14 or higher) and npm for running the JavaScript application
+- **Docker** for running the Redis container
+- **Git** for version control
+- A **DeepSeek API key** (obtain from [DeepSeek](https://www.deepseek.com))
+- Basic knowledge of **JavaScript**, **Express.js**, and **REST APIs**
+- Familiarity with **middleware concepts** and authentication/authorization
+
+## Let's Start Our Journey
+
 An important software company has been dealing with some availability issues lately. They have an API that is widely used by external partners. The API has only one endpoint that processes important data and sends it back to the clients. The API has middleware that authenticates and authorizes the client; this process consumes a certain amount of compute cycles since the whitelist is stored using a plain-text file. So, every time a client wants to consume the API, the middleware needs to read the file and verify if the IP of the client is in the whitelist. The problem they are facing is that some malicious actors have been trying to breach this middleware, and to do this, they have been using brute-force attacks, downgrading the performance of the API. They provided us with a [link](https://github.com/gpeitzner/lang-smith-security-agent-example/tree/8900add2e5c1484e4a344c71ee2a4cf1170580b8/src/start) where we can find the code of the API to get familiar with the app, and the folder structure looks like this:
 
 ```bash
@@ -453,6 +466,8 @@ Then the `./evil.sh` script:
 You will see the following outputs on the terminal or in the `login.log` file:
 
 ```txt
+Running security agent...
+
 Login attempt from 192.256.1.3 - SUCCESS
 Blocked login attempt from 192.256.1.6
 Blocked login attempt from 192.256.1.7
@@ -476,8 +491,16 @@ Blocked login attempt from 192.256.1.9
 
 After the security agent finishes its first execution, it is able to identify the malicious IPs and block them; no more failed login attempts are visible in the logs. We deploy the new feature, and the software company is happy with us.
 
-## Final Thoughs
+## Final Thoughts
 
-Congratulations on building your first security agent! I hope this article was useful and easy to follow. Remember that this is for educational purposes, and major adjustments must be made before deploying it to production.
+Congratulations on building your first security agent! You've successfully combined a fast in-memory blocker with an intelligent LLM-based analyzer to protect your API from brute-force attacks.
 
-You can find the final code of our application here.
+This project demonstrates how AI agents can be practical tools for real-world security challenges. The modular design makes it easy to extend with additional tools and refine your threat detection logic as your needs evolve.
+
+Keep in mind this is for educational purposes, and major adjustments need to be made before deploying to production, such as adding rate limiting, comprehensive logging, and integration with security monitoring systems.
+
+You can find the final code of our application [here](https://github.com/gpeitzner/lang-smith-security-agent-example/tree/main/src/end).
+
+---
+
+Happy coding! 🚀 Feel free to share your feedback and contributions to improve this project further. Thank you for following along on this security agent journey!
