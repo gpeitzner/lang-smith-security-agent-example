@@ -50,15 +50,21 @@ app.post("/task", guardian, login, (req, res) => {
   res.json({ task: req.body.task });
 });
 
-setInterval(async () => {
+const runSecurityAgent = async () => {
   try {
     log("Running security agent...", "info");
-    const result = await runAgent();
-    log(`Security agent completed: ${JSON.stringify(result)}`, "info");
+    const result = await runAgent(
+      "Analyze security logs and block malicious IPs attempting to access the API",
+    );
+    log(`Security agent completed: ${result}`, "info");
   } catch (err) {
     log(`Security agent error: ${err.message}`, "error");
   }
-}, 60000);
+};
+
+runSecurityAgent();
+
+setInterval(runSecurityAgent, 600000);
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);

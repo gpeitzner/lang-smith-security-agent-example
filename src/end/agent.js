@@ -66,20 +66,50 @@ const llmWithTools = llm.bindTools(tools);
 const SYSTEM_PROMPT = `You are a security agent designed to monitor and protect an API from brute-force attacks. 
 Your responsibilities are:
 1. Read the log file to analyze potential threats
-2. Identify IP addresses that have exceeded the request threshold
+2. Identify IP addresses that have exceeded the request threshold (more than 5 failed attempts)
 3. Check if an IP address is already blocked
 4. Block malicious IP addresses
 
 Always start by reading the log file, then analyze it for suspicious activity, and block any threatening IPs.`;
 
-async function runAgent(input) {
+async function runAgent(
+  input = "Analyze the security logs and block any malicious IPs",
+) {
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: input },
   ];
 
-  const response = await llmWithTools.invoke(messages);
-  return response;
+  while (true) {
+    const response = await llmWithTools.invoke(messages);
+    messages.push(response);
+
+    if (!response.tool_calls || response.tool_calls.length === 0) {
+      return response.content;
+    }
+
+    for (const toolCall of response.tool_calls) {
+      let toolResult;
+
+      try {
+        const toolFunction = tools.find((t) => t.name === toolCall.name);
+        if (!toolFunction) {
+          throw new Error(`Tool ${toolCall.name} not found`);
+        }
+
+        toolResult = await toolFunction.invoke(toolCall.args);
+      } catch (err) {
+        toolResult = `Error executing tool: ${err.message}`;
+      }
+
+      messages.push({
+        tool_call_id: toolCall.id,
+        content: toolResult,
+        type: "tool",
+        name: toolCall.name,
+      });
+    }
+  }
 }
 
 module.exports = runAgent;

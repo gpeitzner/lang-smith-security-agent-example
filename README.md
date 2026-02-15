@@ -53,7 +53,7 @@ After we have executed the test script for one minute, we can see that the appli
 2026-02-14T22:03:04.070Z - Login attempt from 192.256.1.10 - FAILED
 ```
 
-Now that we have a full understanding of the API, the software company has given us the responsibility of implementing a middleware and a security agent. The middleware will have the responsibility of blocking brute-force attacks by reading a blocklist stored on a Redis instance. The Redis database will be populated by a security agent that will read the `./login.log` file and identify malicious IP clients every minute. The software company hasn't provided us with access to the Redis database since its security policies are too restrictive, so we use Docker for development purposes:
+Now that we have a full understanding of the API, the software company has given us the responsibility of implementing a middleware and a security agent. The middleware will be responsible for blocking brute-force attacks by reading a blocklist stored on a Redis instance. The Redis database will be populated by a security agent that reads the `./login.log` file and identifies malicious IP clients every ten minutes. The software company hasn't provided us with access to the Redis database since its security policies are too restrictive, so we use Docker for development purposes:
 
 ```bash
 docker run -d --name my-redis -p 6379:6379 redis:latest
@@ -207,26 +207,56 @@ const llmWithTools = llm.bindTools(tools);
 const SYSTEM_PROMPT = `You are a security agent designed to monitor and protect an API from brute-force attacks.
 Your responsibilities are:
 1. Read the log file to analyze potential threats
-2. Identify IP addresses that have exceeded the request threshold
+2. Identify IP addresses that have exceeded the request threshold (more than 5 failed attempts)
 3. Check if an IP address is already blocked
 4. Block malicious IP addresses
 
 Always start by reading the log file, then analyze it for suspicious activity, and block any threatening IPs.`;
 
-async function runAgent(input) {
+async function runAgent(
+  input = "Analyze the security logs and block any malicious IPs",
+) {
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: input },
   ];
 
-  const response = await llmWithTools.invoke(messages);
-  return response;
+  while (true) {
+    const response = await llmWithTools.invoke(messages);
+    messages.push(response);
+
+    if (!response.tool_calls || response.tool_calls.length === 0) {
+      return response.content;
+    }
+
+    for (const toolCall of response.tool_calls) {
+      let toolResult;
+
+      try {
+        const toolFunction = tools.find((t) => t.name === toolCall.name);
+        if (!toolFunction) {
+          throw new Error(`Tool ${toolCall.name} not found`);
+        }
+
+        toolResult = await toolFunction.invoke(toolCall.args);
+      } catch (err) {
+        toolResult = `Error executing tool: ${err.message}`;
+      }
+
+      messages.push({
+        tool_call_id: toolCall.id,
+        content: toolResult,
+        type: "tool",
+        name: toolCall.name,
+      });
+    }
+  }
 }
 
 module.exports = runAgent;
 ```
 
-First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, add a concise and straightforward prompt, and create the agent executor. We are close to the final implementation. Take a look at the current state of the entry point of the API (`index.js` file):
+First, we load our environment variables and import all the utility packages that we will use to build our agent. Then, we define the tools for the agent: `readLogFile`, `checkIpTool`, and `blockIpTool`. Finally, we configure the LLM, bind the created tools, and add a concise and straightforward prompt—letting the LLM iterate until there are no more tool calls—to create the agent executor. We are close to the final implementation. Take a look at the current state of the entry point of the API (`index.js` file):
 
 ```JavaScript
 const express = require("express");
@@ -331,7 +361,7 @@ app.listen(port, () => {
 });
 ```
 
-We added the `guardian` middleware. Since it checks the IP directly from the primary memory, it can handle the deny process faster. Now, we need to configure our security agent to be executed every minute. Let's add the following code:
+We added the `guardian` middleware. Since it checks the IP directly from the primary memory, it can handle the denial process faster. Now, we need to configure our security agent to be executed every ten minutes. Let's add the following code:
 
 ```JavaScript
 const express = require("express");
@@ -386,19 +416,26 @@ app.post("/task", guardian, login, (req, res) => {
   res.json({ task: req.body.task });
 });
 
-setInterval(async () => {
+const runSecurityAgent = async () => {
   try {
     log("Running security agent...", "info");
-    const result = await runAgent();
-    log(`Security agent completed: ${JSON.stringify(result)}`, "info");
+    const result = await runAgent(
+      "Analyze security logs and block malicious IPs attempting to access the API",
+    );
+    log(`Security agent completed: ${result}`, "info");
   } catch (err) {
     log(`Security agent error: ${err.message}`, "error");
   }
-}, 60000);
+};
+
+runSecurityAgent();
+
+setInterval(runSecurityAgent, 600000);
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);
 });
+
 ```
 
 Let's run the API again:
@@ -412,3 +449,35 @@ Then the `./evil.sh` script:
 ```bash
 ./evil.sh
 ```
+
+You will see the following outputs on the terminal or in the `login.log` file:
+
+```txt
+Login attempt from 192.256.1.3 - SUCCESS
+Blocked login attempt from 192.256.1.6
+Blocked login attempt from 192.256.1.7
+Login attempt from 192.256.1.4 - SUCCESS
+Login attempt from 192.256.1.9 - FAILED
+
+### **Security Actions Taken:**
+✅ All 5 malicious IP addresses have been successfully blocked and added to the blocklist
+✅ Each IP was checked before blocking to ensure it wasn't already blocked
+✅ The blocking prevents further brute-force attempts from these sources
+
+The API is now protected against these specific brute-force attack sources. Regular monitoring should continue to detect any new threats.
+
+Blocked login attempt from 192.256.1.7
+Blocked login attempt from 192.256.1.8
+Login attempt from 192.256.1.3 - SUCCESS
+Blocked login attempt from 192.256.1.6
+Login attempt from 192.256.1.2 - SUCCESS
+Blocked login attempt from 192.256.1.9
+```
+
+After the security agent finishes its first execution, it is able to identify the malicious IPs and block them; no more failed login attempts are visible in the logs. We deploy the new feature, and the software company is happy with us.
+
+## Final Thoughs
+
+Congratulations on building your first security agent! I hope this article was useful and easy to follow. Remember that this is for educational purposes, and major adjustments must be made before deploying it to production.
+
+You can find the final code of our application here.
